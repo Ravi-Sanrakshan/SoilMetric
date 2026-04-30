@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soil Metric Dashboard</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --success: #27ae60;
+            --success-hover: #2ecc71;
+            --danger: #e74c3c;
+            --bg: #f4f7f6;
+            --card-bg: #ffffff;
+            --text: #333333;
+            --border: #e0e0e0;
+        }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: var(--bg); 
+            color: var(--text); 
+            margin: 0; 
+            padding: 20px; 
+            display: flex;
+            justify-content: center;
+        }
+        .container { 
+            width: 100%;
+            max-width: 600px; 
+            background: var(--card-bg); 
+            padding: 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 8px 16px rgba(0,0,0,0.05); 
+        }
+        h1 { 
+            color: var(--primary); 
+            text-align: center; 
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+        .form-group { 
+            margin-bottom: 20px; 
+        }
+        label { 
+            display: block; 
+            font-weight: 600; 
+            margin-bottom: 8px; 
+            font-size: 14px;
+            color: #555;
+        }
+        input[type="text"], input[type="number"] { 
+            width: 100%; 
+            padding: 12px; 
+            border: 1px solid #ccc; 
+            border-radius: 6px; 
+            box-sizing: border-box; 
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus, input[type="number"]:focus {
+            outline: none;
+            border-color: var(--success);
+        }
+        button { 
+            width: 100%; 
+            padding: 14px; 
+            background-color: var(--success); 
+            color: white; 
+            border: none; 
+            border-radius: 6px; 
+            font-size: 16px; 
+            font-weight: 600;
+            cursor: pointer; 
+            transition: background 0.3s; 
+            margin-top: 10px;
+        }
+        button:hover { 
+            background-color: var(--success-hover); 
+        }
+        .error { 
+            color: var(--danger); 
+            font-weight: 600; 
+            text-align: center; 
+            display: none; 
+            margin-top: 15px;
+            padding: 10px;
+            background: #fadbd8;
+            border-radius: 6px;
+        }
+        
+        /* Report Card Styling */
+        .report { 
+            margin-top: 30px; 
+            padding: 25px; 
+            border: 1px solid var(--border); 
+            border-radius: 8px; 
+            background: #fafbfc; 
+            display: none; 
+            animation: fadeIn 0.4s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .report h2 { 
+            color: var(--success); 
+            margin-top: 0; 
+            border-bottom: 2px solid var(--success);
+            padding-bottom: 10px;
+            font-size: 20px;
+        }
+        .metric { 
+            display: flex; 
+            justify-content: space-between; 
+            padding: 12px 0; 
+            border-bottom: 1px solid #eee; 
+            font-size: 15px;
+        }
+        .metric span:first-child { 
+            font-weight: 600; 
+            color: #555;
+        }
+        .metric span:last-child {
+            font-weight: 500;
+            text-align: right;
+            max-width: 60%;
+        }
+        h3 {
+            margin-top: 25px;
+            font-size: 16px;
+            color: var(--primary);
+        }
+        .recommendations {
+            background: #fff;
+            padding: 15px;
+            border-left: 4px solid var(--success);
+            border-radius: 0 4px 4px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .recommendations p { 
+            margin: 0 0 10px 0; 
+            line-height: 1.5;
+            font-size: 14px;
+        }
+        .recommendations p:last-child {
+            margin-bottom: 0;
+        }
+        .highlight {
+            font-weight: 600;
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌿 Soil Health Analyzer</h1>
+        
+        <div class="form-group">
+            <label for="code">Device Code (e.g., DRY-01A, MST-06F):</label>
+            <input type="text" id="code" placeholder="Enter the 7-character code" autocomplete="off">
+        </div>
+        
+        <div class="form-group">
+            <label for="ph">Current Soil pH (0 - 14):</label>
+            <input type="number" id="ph" step="0.1" min="0" max="14" placeholder="e.g., 6.5">
+        </div>
+        
+        <button onclick="generateReport()">Analyze Soil Quality</button>
+        <div class="error" id="error-msg">Invalid input. Please check the code and pH value.</div>
+        
+        <div class="report" id="report-card">
+            <h2>Detailed Diagnostics Report</h2>
+            <div class="metric"><span>Moisture Level:</span> <span id="out-moisture"></span></div>
+            <div class="metric"><span>Est. Environmental Context:</span> <span id="out-context"></span></div>
+            <div class="metric"><span>pH Assessment:</span> <span id="out-ph"></span></div>
+            
+            <h3>Action Plan & Improvement</h3>
+            <div class="recommendations" id="out-recs"></div>
+        </div>
+    </div>
+
+    <script>
+        // The 10 Predefined Codes and their corresponding data
+        const codeData = {
+            "DRY-01A": { 
+                moisture: "0-10% (Severely Parched)", 
+                context: "Est. Temp: High (>30°C) | Hum: Very Low (<20%)", 
+                action: "Immediate heavy soaking required. Soil is likely hydrophobic; water slowly to ensure absorption." 
+            },
+            "DRY-02B": { 
+                moisture: "11-20% (Very Dry)", 
+                context: "Est. Temp: High (25-30°C) | Hum: Low (20-30%)", 
+                action: "Needs watering soon. Ideal trigger point for drought-tolerant plants (cacti/succulents)." 
+            },
+            "DRY-03C": { 
+                moisture: "21-30% (Dry)", 
+                context: "Est. Temp: Moderate/High | Hum: Low (30-40%)", 
+                action: "Standard watering recommended. Topsoil is dry, good time to water tropical houseplants." 
+            },
+            "MST-04D": { 
+                moisture: "31-40% (Slightly Dry)", 
+                context: "Est. Temp: Moderate (20-25°C) | Hum: Moderate (40-50%)", 
+                action: "Safe zone for most plants. Wait a day or two before watering standard thirsty plants." 
+            },
+            "MST-05E": { 
+                moisture: "41-50% (Moderately Moist)", 
+                context: "Est. Temp: Moderate (20-25°C) | Hum: Moderate (50%)", 
+                action: "Good baseline. No immediate watering action required. Roots have adequate oxygen." 
+            },
+            "MST-06F": { 
+                moisture: "51-60% (Perfect Moisture)", 
+                context: "Est. Temp: Optimal (20-24°C) | Hum: Optimal (50-60%)", 
+                action: "Ideal conditions for vegetables and tropicals. Maintain current environmental schedule." 
+            },
+            "WET-07G": { 
+                moisture: "61-70% (High Moisture)", 
+                context: "Est. Temp: Mild (<20°C) | Hum: High (60-70%)", 
+                action: "Soil is quite damp. Halt watering. Monitor for proper drainage." 
+            },
+            "WET-08H": { 
+                moisture: "71-80% (Very Wet)", 
+                context: "Est. Temp: Cool (<18°C) | Hum: High (>70%)", 
+                action: "Soil is saturated. High risk of early root rot. Allow top 2 inches to dry thoroughly." 
+            },
+            "WET-09J": { 
+                moisture: "81-90% (Waterlogged)", 
+                context: "Est. Temp: Cool | Hum: Very High (>80%)", 
+                action: "Excessive water retention. Check pot drainage holes. Consider repotting if soil is compacted." 
+            },
+            "WET-10K": { 
+                moisture: "91-100% (Flooded)", 
+                context: "Est. Temp: Variable | Hum: Saturated", 
+                action: "Critical drainage failure! Immediate intervention needed. Drain standing water to save plant roots." 
+            }
+        };
+
+        function generateReport() {
+            const codeInput = document.getElementById("code").value.trim().toUpperCase();
+            const phInput = parseFloat(document.getElementById("ph").value);
+            const errorMsg = document.getElementById("error-msg");
+            const reportCard = document.getElementById("report-card");
+
+            // Validation
+            if (!codeData[codeInput]) {
+                errorMsg.innerText = "Invalid Code. Please enter one of the 10 predefined codes (e.g., MST-06F).";
+                errorMsg.style.display = "block";
+                reportCard.style.display = "none";
+                return;
+            }
+            
+            if (isNaN(phInput) || phInput < 0 || phInput > 14) {
+                errorMsg.innerText = "Please enter a valid pH between 0 and 14.";
+                errorMsg.style.display = "block";
+                reportCard.style.display = "none";
+                return;
+            }
+
+            // Hide error if validation passes
+            errorMsg.style.display = "none";
+            const data = codeData[codeInput];
+            
+            // pH Assessment Logic
+            let phStatus = "";
+            let phAction = "";
+            
+            if (phInput < 5.5) {
+                phStatus = `Highly Acidic (${phInput})`;
+                phAction = "Add garden lime, dolomite, or wood ash to raise pH. Vital nutrients like Phosphorus and Magnesium are likely locked out.";
+            } else if (phInput >= 5.5 && phInput < 6.0) {
+                phStatus = `Slightly Acidic (${phInput})`;
+                phAction = "Great for acid-loving plants (blueberries, azaleas, potatoes). If growing standard veg, consider a light application of lime.";
+            } else if (phInput >= 6.0 && phInput <= 7.5) {
+                phStatus = `Neutral/Optimal (${phInput})`;
+                phAction = "Perfect range for nutrient absorption. Maintain current soil composition with standard organic compost.";
+            } else if (phInput > 7.5 && phInput <= 8.5) {
+                phStatus = `Alkaline (${phInput})`;
+                phAction = "Add elemental sulfur, peat moss, or organic mulch to lower pH. Watch for Iron chlorosis (yellowing leaves with green veins).";
+            } else {
+                phStatus = `Highly Alkaline (${phInput})`;
+                phAction = "Soil is too alkaline. Requires heavy amendment with elemental sulfur or aluminum sulfate. Water drainage might be poor.";
+            }
+
+            // Populate Report UI
+            document.getElementById("out-moisture").innerText = data.moisture;
+            document.getElementById("out-context").innerText = data.context;
+            document.getElementById("out-ph").innerText = phStatus;
+
+            // Build Recommendations HTML
+            let recsHTML = `
+                <p><span class="highlight">Moisture Action:</span> ${data.action}</p>
+                <p><span class="highlight">pH Action:</span> ${phAction}</p>
+            `;
+            
+            document.getElementById("out-recs").innerHTML = recsHTML;
+            reportCard.style.display = "block";
+        }
+    </script>
+</body>
+</html>
